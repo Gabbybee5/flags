@@ -1,6 +1,8 @@
 ---
 title: "World Flags Explorer"
 format: html
+resources:
+  - w2560/*.png
 execute:
   echo: false
 ---
@@ -21,41 +23,121 @@ uci <- read.csv(
   header = FALSE
 ) |>
   mutate(
-    code = tolower(countrycode::countrycode(
-      gsub("-", " ", V1), "country.name", "iso2c", warn = FALSE
-    ))
+    code = case_match(
+      V1,
+      "Comorro-Islands" ~ "km",
+      "Czechoslovakia" ~ "cz",
+      "Micronesia" ~ "fm",
+      "North-Yemen" ~ "ye",
+      "Parguay" ~ "py",
+      "Soloman-Islands" ~ "sb",
+      "Turks-Cocos-Islands" ~ "tc",
+      "US-Virgin-Isles" ~ "vi",
+      .default = tolower(countrycode::countrycode(
+        gsub("-", " ", V1), "country.name", "iso2c", warn = FALSE
+      ))
+    )
   ) |>
   filter(!is.na(code), code %in% flag_codes) |>
   distinct(code, .keep_all = TRUE)
 
+# Fallback attributes for post-1990 countries and territories not in the 1990 UCI dataset
+extra_flags <- tribble(
+  ~code, ~extra_colors, ~extra_pattern, ~extra_symbols,
+  "am", "red, blue, orange", "Horizontal stripes", "None",
+  "aq", "blue, white", "Horizontal stripes", "Triangle, Emblem / Crest",
+  "aw", "red, blue, gold, white", "Horizontal stripes", "Stars / Sun",
+  "ax", "red, blue, gold", "Cross / Saltire", "None",
+  "az", "red, green, blue, white", "Horizontal stripes", "Stars / Sun, Crescent",
+  "ba", "blue, gold, white", "Solid / Centered", "Stars / Sun, Triangle",
+  "bl", "red, blue, gold, white", "Solid / Centered", "Emblem / Crest",
+  "bq", "red, blue, gold, white", "Horizontal stripes", "Stars / Sun, Emblem / Crest",
+  "bv", "red, blue, white", "Cross / Saltire", "None",
+  "by", "red, green, white", "Horizontal stripes", "Emblem / Crest",
+  "cc", "green, gold", "Solid / Centered", "Stars / Sun, Crescent, Circle",
+  "cw", "blue, gold, white", "Horizontal stripes", "Stars / Sun",
+  "cx", "green, blue, gold, white", "Solid / Centered", "Stars / Sun, Circle, Emblem / Crest",
+  "ee", "blue, black, white", "Horizontal stripes", "None",
+  "eh", "red, green, white, black", "Horizontal stripes", "Stars / Sun, Crescent, Triangle",
+  "er", "red, green, blue, gold", "Solid / Centered", "Triangle, Emblem / Crest",
+  "gb-eng", "red, white", "Cross / Saltire", "None",
+  "gb-nir", "red, white, gold", "Cross / Saltire", "Stars / Sun, Emblem / Crest",
+  "gb-sct", "blue, white", "Cross / Saltire", "None",
+  "gb-wls", "red, green, white", "Horizontal stripes", "Emblem / Crest",
+  "ge", "red, white", "Cross / Saltire", "None",
+  "gg", "red, gold, white", "Cross / Saltire", "None",
+  "gp", "red, blue, white", "Vertical bars", "None",
+  "gs", "red, blue, gold, white", "Canton / Quartered", "Emblem / Crest",
+  "hm", "red, blue, white", "Canton / Quartered", "Stars / Sun",
+  "hr", "red, blue, white", "Horizontal stripes", "Emblem / Crest",
+  "im", "red, white, gold", "Solid / Centered", "Emblem / Crest",
+  "io", "red, blue, gold, white", "Canton / Quartered", "Emblem / Crest",
+  "je", "red, gold, white", "Cross / Saltire", "Emblem / Crest",
+  "kg", "red, gold", "Solid / Centered", "Stars / Sun, Circle",
+  "kz", "blue, gold", "Solid / Centered", "Stars / Sun, Emblem / Crest",
+  "lt", "red, green, gold", "Horizontal stripes", "None",
+  "lv", "red, white", "Horizontal stripes", "None",
+  "md", "red, blue, gold", "Vertical bars", "Emblem / Crest",
+  "me", "red, gold", "Solid / Centered", "Emblem / Crest",
+  "mf", "red, blue, white", "Vertical bars", "None",
+  "mh", "blue, orange, white", "Horizontal stripes", "Stars / Sun",
+  "mk", "red, gold", "Solid / Centered", "Stars / Sun, Circle",
+  "mo", "green, gold, white", "Solid / Centered", "Stars / Sun, Emblem / Crest",
+  "mq", "red, green, black", "Horizontal stripes", "Triangle",
+  "na", "red, green, blue, gold, white", "Solid / Centered", "Stars / Sun, Triangle",
+  "nc", "red, green, blue, gold, black", "Horizontal stripes", "Circle, Emblem / Crest",
+  "nf", "green, white", "Vertical bars", "Emblem / Crest",
+  "pm", "red, blue, white", "Vertical bars", "None",
+  "pn", "red, green, blue, gold, white", "Canton / Quartered", "Emblem / Crest",
+  "ps", "red, green, white, black", "Horizontal stripes", "Triangle",
+  "pw", "blue, gold", "Solid / Centered", "Circle",
+  "re", "red, blue, white", "Vertical bars", "None",
+  "rs", "red, blue, white, gold", "Horizontal stripes", "Emblem / Crest",
+  "si", "red, blue, white, gold", "Horizontal stripes", "Emblem / Crest",
+  "sj", "red, blue, white", "Cross / Saltire", "None",
+  "sk", "red, blue, white", "Horizontal stripes", "Cross / Saltire, Emblem / Crest",
+  "ss", "red, green, blue, gold, white, black", "Horizontal stripes", "Stars / Sun, Triangle",
+  "sx", "red, blue, gold, white", "Horizontal stripes", "Triangle, Emblem / Crest",
+  "tf", "red, blue, white", "Canton / Quartered", "Stars / Sun, Text",
+  "tj", "red, green, gold, white", "Horizontal stripes", "Stars / Sun, Emblem / Crest",
+  "tk", "blue, gold, white", "Solid / Centered", "Stars / Sun, Triangle",
+  "tl", "red, gold, white, black", "Solid / Centered", "Stars / Sun, Triangle",
+  "tm", "red, green, gold, white", "Vertical bars", "Stars / Sun, Crescent",
+  "ua", "blue, gold", "Horizontal stripes", "None",
+  "um", "red, blue, white", "Horizontal stripes", "Stars / Sun",
+  "uz", "red, green, blue, white", "Horizontal stripes", "Stars / Sun, Crescent",
+  "wf", "red, blue, white", "Canton / Quartered", "Triangle",
+  "xk", "blue, gold, white", "Solid / Centered", "Stars / Sun, Emblem / Crest",
+  "yt", "red, blue, white", "Vertical bars", "None"
+)
+
 # Build a clean summary table of colors, pattern, and symbols for each flag
 flag_features <- tibble(code = flag_codes) |>
   left_join(uci, by = "code") |>
+  left_join(extra_flags, by = "code") |>
   rowwise() |>
   mutate(
-    main_color = ifelse(is.na(V18), "unknown", V18),
     colors = ifelse(
-      is.na(V18),
-      "Unknown",
+      !is.na(V18),
       paste(
         c("red", "green", "blue", "gold", "white", "black", "orange")[
           c(V11, V12, V13, V14, V15, V16, V17) == 1
         ],
         collapse = ", "
-      )
+      ),
+      extra_colors
     ),
     pattern = case_when(
-      is.na(V8) ~ "Unknown",
-      V20 > 0 | V21 > 0 ~ "Cross / Saltire",
-      V22 > 0 ~ "Canton / Quartered",
-      V8 > 0 ~ "Vertical bars",
-      V9 > 0 ~ "Horizontal stripes",
-      TRUE ~ "Solid / Centered"
+      !is.na(V8) & (V20 > 0 | V21 > 0) ~ "Cross / Saltire",
+      !is.na(V8) & V22 > 0 ~ "Canton / Quartered",
+      !is.na(V8) & V8 > 0 ~ "Vertical bars",
+      !is.na(V8) & V9 > 0 ~ "Horizontal stripes",
+      !is.na(V8) ~ "Solid / Centered",
+      TRUE ~ extra_pattern
     ),
     symbols = ifelse(
-      is.na(V19),
-      "Unknown",
-       {
+      !is.na(V19),
+      {
         syms <- c(
           if (V23 > 0) "Stars / Sun",
           if (V24 > 0) "Crescent",
@@ -65,11 +147,12 @@ flag_features <- tibble(code = flag_codes) |>
           if (V28 > 0) "Text"
         )
         if (length(syms) == 0) "None" else paste(syms, collapse = ", ")
-      }
+      },
+      extra_symbols
     )
   ) |>
   ungroup() |>
-  select(code, main_color, colors, pattern, symbols)
+  select(code, colors, pattern, symbols)
 
 ojs_define(flag_codes = flag_codes, flag_features = flag_features)
 ```
@@ -98,17 +181,32 @@ viewof selected = Inputs.select(countries, {
   format: d => d.name
 })
 
-// Find other flags sharing the same colors, pattern, or symbols
+// Helper to compute overlap between comma-separated feature strings
+overlapScore = (a, b) => {
+  const setA = a.split(", ")
+  const setB = b.split(", ")
+  const shared = setA.filter(x => setB.includes(x)).length
+  if (shared === 0) return 0
+  return a === b ? 100 : shared / Math.max(setA.length, setB.length)
+}
+
+// Find other flags sharing the same or most similar colors, pattern, and symbols
 similarColor = countries
-  .filter(d => d.code !== selected.code && d.colors !== "Unknown" && d.colors === selected.colors)
+  .filter(d => d.code !== selected.code)
+  .map(d => ({ ...d, score: overlapScore(selected.colors, d.colors) }))
+  .filter(d => d.score >= 0.5)
+  .sort((a, b) => b.score - a.score)
   .slice(0, 8)
 
 similarPattern = countries
-  .filter(d => d.code !== selected.code && d.pattern !== "Unknown" && d.pattern === selected.pattern)
+  .filter(d => d.code !== selected.code && d.pattern === selected.pattern)
   .slice(0, 8)
 
 similarSymbols = countries
-  .filter(d => d.code !== selected.code && d.symbols !== "Unknown" && d.symbols !== "None" && d.symbols === selected.symbols)
+  .filter(d => d.code !== selected.code)
+  .map(d => ({ ...d, score: overlapScore(selected.symbols, d.symbols) }))
+  .filter(d => d.score > 0)
+  .sort((a, b) => b.score - a.score)
   .slice(0, 8)
 
 // Helper to render a list of matching country names
