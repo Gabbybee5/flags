@@ -1,0 +1,167 @@
+---
+title: "World Flags Explorer"
+format: html
+execute:
+  echo: false
+---
+
+Select a country from the dropdown below to display its flag.
+
+```{r}
+#| message: false
+#| warning: false
+library(dplyr)
+
+# Read all .png filenames from the w2560 folder
+flag_codes <- sub("\\.png$", "", list.files("w2560", pattern = "\\.png$"))
+
+# Load the UCI Flag dataset for colors, patterns, and symbols
+uci <- read.csv(
+  "https://archive.ics.uci.edu/ml/machine-learning-databases/flags/flag.data",
+  header = FALSE
+) |>
+  mutate(
+    code = tolower(countrycode::countrycode(
+      gsub("-", " ", V1), "country.name", "iso2c", warn = FALSE
+    ))
+  ) |>
+  filter(!is.na(code), code %in% flag_codes) |>
+  distinct(code, .keep_all = TRUE)
+
+# Build a clean summary table of colors, pattern, and symbols for each flag
+flag_features <- tibble(code = flag_codes) |>
+  left_join(uci, by = "code") |>
+  rowwise() |>
+  mutate(
+    main_color = ifelse(is.na(V18), "unknown", V18),
+    colors = ifelse(
+      is.na(V18),
+      "Unknown",
+      paste(
+        c("red", "green", "blue", "gold", "white", "black", "orange")[
+          c(V11, V12, V13, V14, V15, V16, V17) == 1
+        ],
+        collapse = ", "
+      )
+    ),
+    pattern = case_when(
+      is.na(V8) ~ "Unknown",
+      V20 > 0 | V21 > 0 ~ "Cross / Saltire",
+      V22 > 0 ~ "Canton / Quartered",
+      V8 > 0 ~ "Vertical bars",
+      V9 > 0 ~ "Horizontal stripes",
+      TRUE ~ "Solid / Centered"
+    ),
+    symbols = ifelse(
+      is.na(V19),
+      "Unknown",
+       {
+        syms <- c(
+          if (V23 > 0) "Stars / Sun",
+          if (V24 > 0) "Crescent",
+          if (V19 > 0) "Circle",
+          if (V25 > 0) "Triangle",
+          if (V26 > 0 || V27 > 0) "Emblem / Crest",
+          if (V28 > 0) "Text"
+        )
+        if (length(syms) == 0) "None" else paste(syms, collapse = ", ")
+      }
+    )
+  ) |>
+  ungroup() |>
+  select(code, main_color, colors, pattern, symbols)
+
+ojs_define(flag_codes = flag_codes, flag_features = flag_features)
+```
+
+```{ojs}
+regionNames = new Intl.DisplayNames(["en"], { type: "region" })
+
+ukNations = ({
+  "gb-eng": "England",
+  "gb-nir": "Northern Ireland",
+  "gb-sct": "Scotland",
+  "gb-wls": "Wales"
+})
+
+// Combine country names with their flag features
+countries = transpose(flag_features)
+  .map(d => ({
+    ...d,
+    name: ukNations[d.code] ?? regionNames.of(d.code.toUpperCase())
+  }))
+  .sort((a, b) => a.name.localeCompare(b.name))
+
+// Create an interactive dropdown menu; `viewof` exposes the selected value
+viewof selected = Inputs.select(countries, {
+  label: "Choose a country:",
+  format: d => d.name
+})
+
+// Find other flags sharing the same colors, pattern, or symbols
+similarColor = countries
+  .filter(d => d.code !== selected.code && d.colors !== "Unknown" && d.colors === selected.colors)
+  .slice(0, 8)
+
+similarPattern = countries
+  .filter(d => d.code !== selected.code && d.pattern !== "Unknown" && d.pattern === selected.pattern)
+  .slice(0, 8)
+
+similarSymbols = countries
+  .filter(d => d.code !== selected.code && d.symbols !== "Unknown" && d.symbols !== "None" && d.symbols === selected.symbols)
+  .slice(0, 8)
+
+// Helper to render a list of matching country names
+formatMatches = list => list.length > 0 ? list.map(d => d.name).join(", ") : "None found in dataset"
+
+// Helper to render flag thumbnail images for a list of countries
+renderFlagGrid = list => list.length > 0
+  ? html`<div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.25rem;">
+      ${list.map(d => html`<div style="text-align: center; width: 110px;">
+        <img 
+          src="w2560/${d.code}.png" 
+          alt="Flag of ${d.name}" 
+          style="width: 100px; height: 66px; object-fit: cover; border: 1px solid #ccc; border-radius: 4px;"
+        />
+        <div style="font-size: 0.8rem; margin-top: 0.25rem;">${d.name}</div>
+      </div>`)}
+    </div>`
+  : html`<p style="color: #6c757d; font-size: 0.9rem;">None found in dataset</p>`
+
+// Display the local flag image, the similarity info box, and the similar flag images underneath
+html`<div style="margin-top: 1.5rem;">
+  <h3>${selected.name}</h3>
+  <img 
+    src="w2560/${selected.code}.png" 
+    alt="Flag of ${selected.name}" 
+    style="width: 320px; border: 1px solid #ccc; border-radius: 4px;"
+  />
+
+  <div style="margin-top: 1.25rem; padding: 1rem 1.25rem; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; max-width: 600px;">
+    <h4 style="margin-top: 0;">Flag Features & Similar Flags</h4>
+    <p>
+      <strong>Colors (${selected.colors}):</strong><br/>
+      Similar: ${formatMatches(similarColor)}
+    </p>
+    <p>
+      <strong>Pattern (${selected.pattern}):</strong><br/>
+      Similar: ${formatMatches(similarPattern)}
+    </p>
+    <p style="margin-bottom: 0;">
+      <strong>Symbols (${selected.symbols}):</strong><br/>
+      Similar: ${formatMatches(similarSymbols)}
+    </p>
+  </div>
+
+  <div style="margin-top: 1.5rem;">
+    <h5>Similar by Color</h5>
+    ${renderFlagGrid(similarColor)}
+
+    <h5>Similar by Pattern</h5>
+    ${renderFlagGrid(similarPattern)}
+
+    <h5>Similar by Symbols</h5>
+    ${renderFlagGrid(similarSymbols)}
+  </div>
+</div>`
+```
